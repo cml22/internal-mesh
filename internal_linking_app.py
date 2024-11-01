@@ -3,9 +3,9 @@ import requests
 from bs4 import BeautifulSoup
 import pandas as pd
 import time
+import io
 
 # --- Configuration --- 
-keyword_file = 'mots_cles.txt'  # Chemin vers le fichier de mots-clés
 output_file = 'opportunites_maillage.csv'  # Nom du fichier de sortie
 url = "https://www.google.fr/search"  # URL de recherche Google pour votre locale
 
@@ -14,10 +14,9 @@ headers = {
     "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36"
 }
 
-# Fonction pour charger les mots-clés depuis un fichier texte
-def load_keywords(file_path):
-    with open(file_path, 'r', encoding='utf-8') as f:
-        return [line.strip() for line in f.readlines()]
+# Fonction pour charger les mots-clés à partir d'un fichier texte
+def load_keywords(file):
+    return [line.strip() for line in io.TextIOWrapper(file, encoding='utf-8').readlines()]
 
 # Fonction pour effectuer une recherche Google et récupérer les résultats pour un mot-clé spécifique
 def google_search(query, lang, country):
@@ -69,18 +68,19 @@ def find_linking_opportunities(keywords, lang, country):
         time.sleep(2)  # Ajout d'un délai pour éviter les blocages de Google
     return pd.DataFrame(opportunities)
 
-# Chargement des mots-clés
-keywords = load_keywords(keyword_file)
-
 # Interface Streamlit
 st.title("Opportunités de Maillage Interne")
+
+# Upload du fichier de mots-clés
+uploaded_file = st.file_uploader("Téléchargez votre fichier de mots-clés (.txt)", type="txt")
 
 # Choix de la langue et du pays
 lang = st.selectbox("Choisissez la langue :", ["fr", "en", "es", "de", "it", "pt"])  # Ajoutez d'autres langues si nécessaire
 country = st.selectbox("Choisissez le pays :", ["fr", "us", "es", "de", "it", "pt"])  # Ajoutez d'autres pays si nécessaire
 
 # Recherche des opportunités de maillage interne
-if st.button("Trouver des opportunités"):
+if st.button("Trouver des opportunités") and uploaded_file is not None:
+    keywords = load_keywords(uploaded_file)  # Charger les mots-clés depuis le fichier téléchargé
     df_opportunities = find_linking_opportunities(keywords, lang, country)
     
     # Exportation des résultats dans un fichier CSV
@@ -92,3 +92,5 @@ if st.button("Trouver des opportunités"):
     
     # Lien pour télécharger le fichier CSV
     st.markdown(f"[Télécharger les résultats]({output_file})")
+else:
+    st.warning("Veuillez télécharger un fichier de mots-clés avant de continuer.")
