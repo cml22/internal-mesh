@@ -48,7 +48,7 @@ def find_linking_opportunities(keywords, site):
             soup = BeautifulSoup(search_results, 'html.parser')
             for result in soup.find_all('a'):
                 result_url = result.get('href')
-                if "url?q=" in result_url:
+                if result_url and "url?q=" in result_url:  # Vérifie que result_url n'est pas None
                     result_url = result_url.split("url?q=")[1].split("&")[0]
                     anchor_match = check_anchor(keyword, result_url)
                     if anchor_match:
