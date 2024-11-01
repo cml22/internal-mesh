@@ -10,17 +10,19 @@ def google_search(keyword, site, lang, country):
         "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/89.0.4389.82 Safari/537.36"
     }
     response = requests.get(url, headers=headers)
-    
+
     if response.status_code == 200:
         soup = BeautifulSoup(response.text, "html.parser")
         opportunities = []
 
         # Recherche tous les résultats de liens
-        for result in soup.select('a'):
-            result_url = result.get('href')
-            if result_url and "url?q=" in result_url:
-                result_url = result_url.split("url?q=")[1].split("&")[0]
-                opportunities.append(result_url)
+        for result in soup.select('h3'):
+            parent = result.find_parent('a')
+            if parent:
+                result_url = parent.get('href')
+                if result_url and "url?q=" in result_url:
+                    result_url = result_url.split("url?q=")[1].split("&")[0]
+                    opportunities.append(result_url)
 
         return opportunities
     else:
@@ -32,7 +34,8 @@ def analyze_opportunities(opportunities, keywords):
     analysis_results = []
     for url in opportunities:
         for keyword in keywords:
-            if keyword.lower() in url.lower():  # Vérifie si le mot-clé est présent dans l'URL
+            # Vérifie si le mot-clé est présent dans l'URL ou le titre de la page
+            if keyword.lower() in url.lower():
                 analysis_results.append({
                     'url': url,
                     'keyword': keyword,
