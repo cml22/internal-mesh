@@ -1,6 +1,6 @@
-
+## Credits webloom (francois@webloom.fr)
 ## Edit "Configuration settings" below according to your needs
-## Don't forget to change site = "ovhcloud.com" by your own website 👈
+## Don't forget to change site = "webloom.fr" by your own website 👈
 ## Don't forget to change url = "https://www.google.fr/search" by your own Google locale (google.de, etc) 👈
 ## Don't forget to add a TXT file as "motscles.txt" in your files (at root, no in sample_data !) 👈
 ## Output will be "opportunites_maillage.csv" in root 👈 (refresh for it to appear)
@@ -14,7 +14,7 @@ import logging
 
 # --- Configuration settings (what to change) ---
 keyword_file = 'motscles.txt'                     # Path to your keywords file
-site = "ovhcloud.com"                                # Your website (change as needed)
+site = "webloom.fr"                                # Your website (change as needed)
 output_file = 'opportunites_maillage.csv'          # Output file for opportunities
 url = "https://www.google.fr/search"               # Google search URL (change for your locale)
 headers = {
