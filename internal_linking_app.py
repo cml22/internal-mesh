@@ -10,9 +10,9 @@ headers = {
     "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36"
 }
 
-# Fonction pour charger les mots-clés depuis un fichier texte
-def load_keywords(file):
-    return [line.strip() for line in file.readlines()]
+# Fonction pour charger les mots-clés depuis un champ de texte
+def load_keywords(keywords_text):
+    return [line.strip() for line in keywords_text.splitlines() if line.strip()]  # Ignorer les lignes vides
 
 # Fonction pour effectuer une recherche Google et récupérer les résultats pour un mot-clé spécifique
 def google_search(query, site=None):
@@ -61,30 +61,34 @@ def find_linking_opportunities(keywords, site):
 
 # Interface Streamlit
 st.title("Opportunités de Maillage Interne")
-st.write("Téléchargez votre fichier de mots-clés (.txt)")
+st.write("Saisissez vos mots-clés (un par ligne) :")
 
-# Champ de téléchargement de fichier
-uploaded_file = st.file_uploader("Drag and drop file here", type='txt')
+# Champ de saisie pour les mots-clés
+keywords_text = st.text_area("Mots-clés (un par ligne) :")
 
 # Champ de saisie pour le site
 site = st.text_input("Entrez l'URL de votre site (sans https://) :")
 
 # Sélecteur de langue
-langue = st.selectbox("Choisissez la langue :", ["fr", "en", "es", "de"])
+langues = [
+    "fr", "en", "es", "de", "it", "pt", "nl", "ru", "ja", "zh",
+    "ar", "hi", "tr", "sv", "da", "fi", "no", "pl", "cs", "ro",
+    "hu", "el", "th", "vi", "id", "bn", "ms", "tl", "af"
+]
+langue = st.selectbox("Choisissez la langue :", langues)
 
 # Sélecteur de pays
-pays = st.selectbox("Choisissez le pays :", ["fr", "us", "es", "de"])
+pays = [
+    "fr", "us", "es", "de", "it", "pt", "nl", "ru", "jp", "cn",
+    "uk", "ca", "au", "br", "mx", "in", "za"
+]  
+pays_selection = st.selectbox("Choisissez le pays :", pays)
 
-if uploaded_file and site:
-    keywords = load_keywords(uploaded_file)
-    df_opportunities = find_linking_opportunities(keywords, site)
-    if not df_opportunities.empty:
-        st.write("Voici les opportunités de maillage détectées :")
-        st.write(df_opportunities)
-        output_file = 'opportunites_maillage.csv'
-        df_opportunities.to_csv(output_file, index=False)
-        st.success(f"Les résultats ont été exportés dans '{output_file}'.")
+# Bouton pour lancer la recherche
+if st.button("Trouver des opportunités"):
+    if keywords_text and site:
+        keywords = load_keywords(keywords_text)
+        results_df = find_linking_opportunities(keywords, site)
+        st.write(results_df)
     else:
-        st.write("Aucune opportunité de maillage détectée.")
-else:
-    st.warning("Veuillez télécharger un fichier de mots-clés et entrer l'URL de votre site avant de continuer.")
+        st.error("Veuillez entrer des mots-clés et l'URL de votre site.")
