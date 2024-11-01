@@ -1,3 +1,10 @@
+## Credits webloom (francois@webloom.fr)
+## Edit "Configuration settings" below according to your needs
+## Don't forget to change site = "webloom.fr" by your own website 👈
+## Don't forget to change url = "https://www.google.fr/search" by your own Google locale (google.de, etc) 👈
+## Don't forget to add a TXT file as "motscles.txt" in your files (at root, no in sample_data !) 👈
+## Output will be "opportunites_maillage.csv" in root 👈 (refresh for it to appear)
+
 import requests
 from bs4 import BeautifulSoup
 import pandas as pd
@@ -6,10 +13,10 @@ from urllib.parse import urlparse, urljoin
 import logging
 
 # --- Configuration settings (what to change) ---
-keyword_file = 'keywords.txt'                     # Path to your keywords file
-site = "yourwebsite.com"                            # Your website (change as needed)
-output_file = 'link_opportunities.csv'            # Output file for opportunities
-url = "https://www.google.com/search"              # Google search URL (change for your locale)
+keyword_file = 'motscles.txt'                     # Path to your keywords file
+site = "webloom.fr"                                # Your website (change as needed)
+output_file = 'opportunites_maillage.csv'          # Output file for opportunities
+url = "https://www.google.fr/search"               # Google search URL (change for your locale)
 headers = {
     "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) " +
                   "AppleWebKit/537.36 (KHTML, like Gecko) " +
@@ -19,7 +26,7 @@ delay_between_requests = 2  # seconds
 
 # Setup logging
 logging.basicConfig(
-    filename='link_debug.log',
+    filename='maillage_debug.log',
     filemode='w',
     level=logging.INFO,
     format='%(asctime)s - %(levelname)s - %(message)s'
@@ -82,23 +89,23 @@ def check_existing_link(source_url, target_url, keyword):
                 # Found a link to the target page
                 anchor_text = a_tag.get_text().strip().lower()
                 if anchor_text == keyword_lower:
-                    return (True, 'Yes')  # Link exists and anchor is optimized
+                    return (True, 'Oui')  # Link exists and anchor is optimized
                 else:
-                    return (True, 'No')  # Link exists but anchor is not optimized
-        return (False, 'No')  # Link does not exist
+                    return (True, 'Non')  # Link exists but anchor is not optimized
+        return (False, 'Non')  # Link does not exist
     except requests.RequestException as e:
         logging.warning(f"HTTP error accessing '{source_url}': {e}")
-        return (False, 'No')
+        return (False, 'Non')
     except Exception as e:
         logging.warning(f"Error parsing '{source_url}': {e}")
-        return (False, 'No')
+        return (False, 'Non')
 
 # Detect linking opportunities by linking all pages to the top 1 result
-def detect_link_opportunities(keywords, site):
-    link_opportunities = []
+def detect_maillage(keywords, site):
+    maillage_opportunities = []
 
     for idx, keyword in enumerate(keywords, start=1):
-        print(f"[{idx}/{len(keywords)}] Searching for keyword: {keyword}")
+        print(f"[{idx}/{len(keywords)}] Recherche pour le mot-clé : {keyword}")
         logging.info(f"Processing keyword {idx}/{len(keywords)}: '{keyword}'")
         links = google_search(keyword, site)
 
@@ -107,13 +114,13 @@ def detect_link_opportunities(keywords, site):
             for link in links[1:]:
                 exists, anchor_optimized = check_existing_link(link, top_link, keyword)
                 if not exists:
-                    action = "Add a link"
-                    link_opportunities.append([keyword, link, top_link, action, 'Not Applicable'])
+                    action = "Ajouter un lien"
+                    maillage_opportunities.append([keyword, link, top_link, action, 'Non Applicable'])
                     logging.info(f"Link opportunity: '{link}' → '{top_link}' for keyword '{keyword}' (Add Link)")
                 else:
-                    if anchor_optimized == 'No':
-                        action = "Optimize anchor"
-                        link_opportunities.append([keyword, link, top_link, action, 'No'])
+                    if anchor_optimized == 'Non':
+                        action = "Optimiser l'ancre"
+                        maillage_opportunities.append([keyword, link, top_link, action, 'Non'])
                         logging.info(f"Anchor optimization needed: '{link}' already links to '{top_link}' with non-optimized anchor for keyword '{keyword}'")
                     else:
                         logging.info(f"Existing optimized link found: '{link}' already links to '{top_link}' with optimized anchor for keyword '{keyword}'")
@@ -122,15 +129,15 @@ def detect_link_opportunities(keywords, site):
 
         time.sleep(delay_between_requests)  # Pause to avoid being blocked
 
-    return link_opportunities
+    return maillage_opportunities
 
 # Export results to a CSV file
-def export_to_csv(link_opportunities, output_file):
+def export_to_csv(maillage_opportunities, output_file):
     try:
-        df = pd.DataFrame(link_opportunities, columns=["Keyword", "Source Page", "Target Page", "Required Action", "Optimized Anchor"])
+        df = pd.DataFrame(maillage_opportunities, columns=["Mot-Clé", "Page Source", "Page Cible", "Action Requise", "Anchor Optimisé"])
         df.to_csv(output_file, index=False, encoding='utf-8-sig')
-        print(f"Link opportunities exported to: {output_file}")
-        logging.info(f"Exported {len(link_opportunities)} opportunities to '{output_file}'")
+        print(f"Opportunités de maillage interne exportées dans : {output_file}")
+        logging.info(f"Exported {len(maillage_opportunities)} opportunities to '{output_file}'")
     except Exception as e:
         logging.error(f"Error exporting to CSV: {e}")
         raise
@@ -142,21 +149,21 @@ def main():
         keywords = load_keywords(keyword_file)
 
         if not keywords:
-            print(f"No keywords found in {keyword_file}.")
+            print(f"Aucun mot-clé trouvé dans {keyword_file}.")
             logging.warning(f"No keywords found in '{keyword_file}'. Exiting.")
             return
 
         # Detect internal linking opportunities
-        link_opportunities = detect_link_opportunities(keywords, site)
+        maillage_opportunities = detect_maillage(keywords, site)
 
-        if link_opportunities:
+        if maillage_opportunities:
             # Export results to a CSV file
-            export_to_csv(link_opportunities, output_file)
+            export_to_csv(maillage_opportunities, output_file)
         else:
-            print("No internal linking opportunities found.")
+            print("Aucune opportunité de maillage interne trouvée.")
             logging.info("No linking opportunities found.")
     except Exception as e:
-        print(f"An error occurred: {e}")
+        print(f"Une erreur est survenue : {e}")
         logging.critical(f"Critical error in main: {e}")
 
 if __name__ == "__main__":
