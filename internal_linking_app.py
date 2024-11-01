@@ -34,12 +34,12 @@ def analyze_opportunities(opportunities, keywords):
     analysis_results = []
     for url in opportunities:
         for keyword in keywords:
-            # Vérifie si le mot-clé est présent dans l'URL ou le titre de la page
+            # Vérifie si le mot-clé est présent dans l'URL
             if keyword.lower() in url.lower():
                 analysis_results.append({
                     'url': url,
                     'keyword': keyword,
-                    'action': "Ajouter un lien" if "optimized" not in url else "Optimiser l'ancre"
+                    'action': "Optimiser l'ancre" if "optimized" in url else "Ajouter un lien"
                 })
                 break  # Pas besoin de vérifier d'autres mots-clés si un match a été trouvé
     return analysis_results
