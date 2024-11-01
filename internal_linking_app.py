@@ -1,6 +1,7 @@
 import streamlit as st
 import requests
 from bs4 import BeautifulSoup
+import time
 
 # Fonction pour effectuer une recherche Google
 def google_search(keyword, site, lang, country):
@@ -9,6 +10,8 @@ def google_search(keyword, site, lang, country):
     headers = {
         "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/89.0.4389.82 Safari/537.36"
     }
+    
+    # Faire une requête HTTP
     response = requests.get(url, headers=headers)
 
     if response.status_code == 200:
@@ -16,11 +19,12 @@ def google_search(keyword, site, lang, country):
         opportunities = []
 
         # Recherche tous les résultats de liens
-        for result in soup.select('h3'):
+        for result in soup.find_all('h3'):
             parent = result.find_parent('a')
             if parent:
                 result_url = parent.get('href')
                 if result_url and "url?q=" in result_url:
+                    # Extraire l'URL
                     result_url = result_url.split("url?q=")[1].split("&")[0]
                     opportunities.append(result_url)
 
@@ -64,6 +68,7 @@ if st.button("Analyser"):
         for keyword in keywords:
             st.write(f"Recherche pour le mot-clé : {keyword}")
             opportunities += google_search(keyword, site, lang, country)
+            time.sleep(2)  # Attente pour éviter d'être bloqué par Google
 
         if opportunities:
             analysis_results = analyze_opportunities(opportunities, keywords)
