@@ -17,6 +17,7 @@ def google_search(keyword, site, lang, country):
     if response.status_code == 200:
         soup = BeautifulSoup(response.text, "html.parser")
         opportunities = []
+        serp_results = []
 
         # Recherche tous les résultats de liens
         for result in soup.find_all('a'):
@@ -24,12 +25,13 @@ def google_search(keyword, site, lang, country):
             if href and "url?q=" in href:
                 # Extraire l'URL
                 result_url = href.split("url?q=")[1].split("&")[0]
+                serp_results.append(result_url)  # Ajoute à la liste des résultats de SERP
                 opportunities.append(result_url)
 
-        return opportunities
+        return opportunities, serp_results
     else:
         st.error("Erreur lors de la récupération des résultats.")
-        return []
+        return [], []
 
 # Fonction pour analyser les opportunités trouvées
 def analyze_opportunities(opportunities, keywords):
@@ -63,9 +65,12 @@ if st.button("Analyser"):
 
         # Recherche et analyse
         opportunities = []
+        all_serp_results = []
         for keyword in keywords:
             st.write(f"Recherche pour le mot-clé : {keyword}")
-            opportunities += google_search(keyword, site, lang, country)
+            opportun, serp_results = google_search(keyword, site, lang, country)
+            opportunities += opportun
+            all_serp_results += serp_results
             time.sleep(2)  # Attente pour éviter d'être bloqué par Google
 
         if opportunities:
@@ -78,5 +83,14 @@ if st.button("Analyser"):
                 st.write("Aucune opportunité trouvée.")
         else:
             st.write("Aucune opportunité trouvée.")
+
+        # Vérification des SERP
+        st.write("### Résultats de la recherche :")
+        for serp_url in all_serp_results:
+            if site in serp_url:
+                st.write(f"**Le site {site} est positionné sur le mot-clé.** URL : {serp_url}")
+            else:
+                st.write(f"URL : {serp_url}")
+
     else:
         st.error("Veuillez entrer des mots-clés et un site.")
