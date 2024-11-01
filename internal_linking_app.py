@@ -4,77 +4,46 @@ from bs4 import BeautifulSoup
 import pandas as pd
 import time
 
-# Streamlit app title
-st.title("Internal Linking Opportunities Finder")
-
-# Configuration settings for Google Search
-url = "https://www.google.fr/search"
+# --- Configuration ---
+keyword_file = 'mots_cles.txt'  # Chemin vers le fichier de mots-clés
+site = "ovhcloud.com"  # Remplacez par votre site
+output_file = 'opportunites_maillage.csv'  # Nom du fichier de sortie
+url = "https://www.google.fr/search"  # URL de recherche Google pour votre locale
 headers = {
     "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36"
 }
 
-# Function to load keywords from a file
-def load_keywords(file):
-    return [line.strip() for line in file]
+# Fonction pour charger les mots-clés depuis un fichier texte
+def load_keywords(file_path):
+    with open(file_path, 'r', encoding='utf-8') as f:
+        return [line.strip() for line in f.readlines()]
 
-# Perform a Google search and retrieve results for a specific keyword
+# Fonction pour effectuer une recherche Google et récupérer les résultats pour un mot-clé spécifique
 def google_search(query, site=None):
-    params = {"q": f'{query} site:{site}' if site else query, "num": 10}  # Search top 10 results
+    params = {"q": f"{query} site:{site}" if site else query, "num": 10}  # Recherche les 10 premiers résultats
     response = requests.get(url, headers=headers, params=params)
-    soup = BeautifulSoup(response.text, 'html.parser')
-    return [a['href'] for a in soup.select('a[href^="http"]') if site in a['href']]
+    if response.status_code == 200:
+        return response.text
+    else:
+        print(f"Erreur lors de la recherche pour le mot-clé '{query}': Statut {response.status_code}")
+        return None
 
-# Check if the anchor text exactly matches the keyword
-def check_anchor(keyword, url):
+# Fonction pour vérifier si un mot-clé est présent dans les ancres des liens de la page
+def check_anchor(keyword, page_url):
     try:
-        response = requests.get(url, headers=headers)
-        soup = BeautifulSoup(response.text, 'html.parser')
-        # Ensure we process only valid anchor tags and skip if there's an issue
-        return any(keyword.lower() in a.get_text(strip=True).lower() for a in soup.find_all('a') if a.get_text(strip=True))
+        response = requests.get(page_url, headers=headers)
+        if response.status_code == 200:
+            soup = BeautifulSoup(response.content, 'html.parser')
+            return any(keyword.lower() in a.get_text(strip=True).lower() for a in soup.find_all('a'))
+        else:
+            print(f"Erreur d'accès à l'URL {page_url}: Statut {response.status_code}")
+            return False
     except Exception as e:
-        st.write(f"Error checking anchor for URL {url}: {e}")
+        print(f"Erreur lors de la vérification de l'ancre pour l'URL {page_url}: {e}")
         return False
 
-# Main function to find internal linking opportunities
+# Fonction principale pour trouver des opportunités de maillage interne
 def find_linking_opportunities(keywords, site):
     opportunities = []
     for keyword in keywords:
-        st.write(f"Processing keyword: {keyword}")
-        time.sleep(2)  # Delay to prevent blocking
-        results = google_search(keyword, site=site)
-        
-        for result_url in results:
-            anchor_match = check_anchor(keyword, result_url)
-            action = "Ajouter un lien" if not anchor_match else "Optimiser l'ancre"
-            opportunities.append({
-                'Keyword': keyword,
-                'URL': result_url,
-                'Action': action
-            })
-
-    return pd.DataFrame(opportunities)
-
-# Streamlit sidebar inputs
-st.sidebar.header("Configuration")
-site = st.sidebar.text_input("Enter your website domain", "yourwebsite.com")
-
-# File uploader for keywords
-uploaded_file = st.file_uploader("Upload a text file with keywords (one per line)", type="txt")
-
-# Process the file and display linking opportunities
-if uploaded_file and site:
-    keywords = load_keywords(uploaded_file)
-    df_opportunities = find_linking_opportunities(keywords, site)
-
-    # Display results in Streamlit
-    st.subheader("Linking Opportunities")
-    st.write(df_opportunities)
-
-    # Button to download results as CSV
-    csv = df_opportunities.to_csv(index=False).encode('utf-8')
-    st.download_button(
-        label="Download CSV",
-        data=csv,
-        file_name='opportunites_maillage.csv',
-        mime='text/csv'
-    )
+   
