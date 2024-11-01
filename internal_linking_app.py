@@ -19,14 +19,12 @@ def google_search(keyword, site, lang, country):
         opportunities = []
 
         # Recherche tous les résultats de liens
-        for result in soup.find_all('h3'):
-            parent = result.find_parent('a')
-            if parent:
-                result_url = parent.get('href')
-                if result_url and "url?q=" in result_url:
-                    # Extraire l'URL
-                    result_url = result_url.split("url?q=")[1].split("&")[0]
-                    opportunities.append(result_url)
+        for result in soup.find_all('a'):
+            href = result.get('href')
+            if href and "url?q=" in href:
+                # Extraire l'URL
+                result_url = href.split("url?q=")[1].split("&")[0]
+                opportunities.append(result_url)
 
         return opportunities
     else:
