@@ -1,9 +1,8 @@
-## Credits webloom (francois@webloom.fr)
 ## Edit "Configuration settings" below according to your needs
-## Don't forget to change site = "webloom.fr" by your own website 👈
+## Don't forget to change site = "ovhcloud.com" by your own website 👈
 ## Don't forget to change url = "https://www.google.fr/search" by your own Google locale (google.de, etc) 👈
-## Don't forget to add a TXT file as "motscles.txt" in your files (at root, no in sample_data !) 👈
-## Output will be "opportunites_maillage.csv" in root 👈 (refresh for it to appear)
+## Don't forget to add a TXT file as "keywords.txt" in your files (at root, no in sample_data !) 👈
+## Output will be "internal_mesh_opportunities" in root 👈 (refresh for it to appear)
 
 import requests
 from bs4 import BeautifulSoup
@@ -13,9 +12,9 @@ from urllib.parse import urlparse, urljoin
 import logging
 
 # --- Configuration settings (what to change) ---
-keyword_file = 'motscles.txt'                     # Path to your keywords file
-site = "webloom.fr"                                # Your website (change as needed)
-output_file = 'opportunites_maillage.csv'          # Output file for opportunities
+keyword_file = 'keywords.txt'                     # Path to your keywords file
+site = "ovhcloud.com"                                # Your website (change as needed)
+output_file = 'internal_mesh_opportunities'          # Output file for opportunities
 url = "https://www.google.fr/search"               # Google search URL (change for your locale)
 headers = {
     "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) " +
