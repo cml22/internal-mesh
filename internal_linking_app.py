@@ -46,4 +46,32 @@ def check_anchor(keyword, page_url):
 def find_linking_opportunities(keywords, site):
     opportunities = []
     for keyword in keywords:
-   
+        print(f"Traitement du mot-clé : {keyword}")
+        search_results = google_search(keyword, site)
+        if search_results:
+            soup = BeautifulSoup(search_results, 'html.parser')
+            for result in soup.find_all('a'):
+                result_url = result.get('href')
+                if "url?q=" in result_url:
+                    result_url = result_url.split("url?q=")[1].split("&")[0]
+                    anchor_match = check_anchor(keyword, result_url)
+                    if anchor_match:
+                        action = "Optimiser l'ancre"
+                    else:
+                        action = "Ajouter un lien"
+                    opportunities.append({"Mot-clé": keyword, "URL": result_url, "Action": action})
+    return pd.DataFrame(opportunities)
+
+# Chargement des mots-clés
+keywords = load_keywords(keyword_file)
+
+# Recherche des opportunités de maillage interne
+df_opportunities = find_linking_opportunities(keywords, site)
+
+# Exportation des résultats dans un fichier CSV
+df_opportunities.to_csv(output_file, index=False)
+
+# Affichage des résultats dans Streamlit
+st.title("Opportunités de Maillage Interne")
+st.write("Voici les opportunités de maillage détectées :")
+st.write(df_opportunities)
