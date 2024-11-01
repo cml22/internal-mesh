@@ -1,11 +1,12 @@
+import streamlit as st
 import requests
 from bs4 import BeautifulSoup
 import pandas as pd
-import time
+import time  # Import de la bibliothèque time
 
 # --- Configuration ---
 keyword_file = 'mots_cles.txt'  # Chemin vers le fichier de mots-clés
-site = ""  # Laissez vide pour permettre à l'utilisateur de le remplir via Streamlit
+site = ""  # Remplacez par votre site si nécessaire
 output_file = 'opportunites_maillage.csv'  # Nom du fichier de sortie
 url = "https://www.google.fr/search"  # URL de recherche Google pour votre locale
 headers = {
@@ -15,7 +16,7 @@ headers = {
 # Fonction pour charger les mots-clés depuis un fichier texte
 def load_keywords(file_path):
     with open(file_path, 'r', encoding='utf-8') as f:
-        return [line.strip() for line in f.readlines() if line.strip()]  # Ignore les lignes vides
+        return [line.strip() for line in f.readlines()]
 
 # Fonction pour effectuer une recherche Google et récupérer les résultats pour un mot-clé spécifique
 def google_search(query, site=None):
@@ -59,22 +60,20 @@ def find_linking_opportunities(keywords, site):
                     else:
                         action = "Ajouter un lien"
                     opportunities.append({"Mot-clé": keyword, "URL": result_url, "Action": action})
+        
+        time.sleep(2)  # Pause de 2 secondes entre les requêtes
     return pd.DataFrame(opportunities)
 
 # Chargement des mots-clés
 keywords = load_keywords(keyword_file)
 
-# Vérifiez si des mots-clés ont été chargés
-if not keywords:
-    print("Aucun mot-clé trouvé dans le fichier. Veuillez vérifier le contenu du fichier.")
-else:
-    # Recherche des opportunités de maillage interne
-    df_opportunities = find_linking_opportunities(keywords, site)
+# Recherche des opportunités de maillage interne
+df_opportunities = find_linking_opportunities(keywords, site)
 
-    # Vérifiez si des opportunités ont été trouvées
-    if df_opportunities.empty:
-        print("Aucune opportunité de maillage interne trouvée.")
-    else:
-        # Exportation des résultats dans un fichier CSV
-        df_opportunities.to_csv(output_file, index=False)
-        print("Les opportunités de maillage ont été enregistrées dans 'opportunites_maillage.csv'.")
+# Exportation des résultats dans un fichier CSV
+df_opportunities.to_csv(output_file, index=False)
+
+# Affichage des résultats dans Streamlit
+st.title("Opportunités de Maillage Interne")
+st.write("Voici les opportunités de maillage détectées :")
+st.write(df_opportunities)
