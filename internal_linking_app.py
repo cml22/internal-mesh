@@ -10,7 +10,7 @@ def google_search(keyword, site, lang, country):
     headers = {
         "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/89.0.4389.82 Safari/537.36"
     }
-    
+
     try:
         # Faire une requête HTTP
         response = requests.get(url, headers=headers)
@@ -21,13 +21,14 @@ def google_search(keyword, site, lang, country):
         serp_results = []
 
         # Recherche tous les résultats de liens
-        for result in soup.find_all('a'):
-            href = result.get('href')
-            if href and "url?q=" in href:
-                # Extraire l'URL
-                result_url = href.split("url?q=")[1].split("&")[0]
-                serp_results.append(result_url)  # Ajoute à la liste des résultats de SERP
-                opportunities.append(result_url)
+        for g in soup.find_all('div', class_='g'):
+            link = g.find('a')
+            if link and 'href' in link.attrs:
+                result_url = link.attrs['href']
+                if 'url?q=' in result_url:
+                    result_url = result_url.split("url?q=")[1].split("&")[0]
+                    serp_results.append(result_url)  # Ajoute à la liste des résultats de SERP
+                    opportunities.append(result_url)
 
         return opportunities, serp_results
     except requests.exceptions.HTTPError as e:
@@ -44,7 +45,6 @@ def analyze_opportunities(opportunities, keywords):
         for keyword in keywords:
             # Vérifie si le mot-clé est présent dans l'URL
             if keyword.lower() in url.lower():
-                # Ici, on pourrait ajouter une vérification pour déterminer si l'ancre est optimisée
                 action = "Optimiser l'ancre" if "optimized" in url else "Ajouter un lien"
                 analysis_results.append({
                     'url': url,
@@ -77,7 +77,7 @@ if st.button("Analyser"):
             opportun, serp_results = google_search(keyword, site, lang, country)
             opportunities += opportun
             all_serp_results += serp_results
-            time.sleep(2)  # Attente pour éviter d'être bloqué par Google
+            time.sleep(5)  # Pause prolongée pour éviter d'être bloqué par Google
 
         # Affichage des résultats
         if opportunities:
