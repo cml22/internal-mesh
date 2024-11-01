@@ -1,100 +1,91 @@
 import streamlit as st
 import requests
 from bs4 import BeautifulSoup
-import time
+import urllib.parse
+import pandas as pd
 
-# Fonction pour effectuer une recherche Google
-def google_search(keyword, site, lang, country):
-    query = f"{keyword} site:{site}"
-    url = f"https://www.google.{country}/search?q={query}&hl={lang}"
+# Configuration de la page Streamlit
+st.set_page_config(page_title="Opportunité de Maillage", layout="centered")
+
+# But de l'outil
+st.write("## Opportunité de Maillage")
+st.write("Cet outil vérifie si des domaines spécifiques apparaissent dans les résultats de recherche pour un ou plusieurs mots-clés.")
+
+# Backlink vers le site de Charles Migaud
+st.markdown('Outil réalisé avec ❤️ par [Charles Migaud](https://charles-migaud.fr)')
+
+def scrape_serp(keyword, language, country, num_results):
+    query = urllib.parse.quote(keyword)
+    url = f"https://www.google.com/search?q={query}&hl={language}&gl={country}&num={num_results}"
+
     headers = {
-        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/89.0.4389.82 Safari/537.36"
+        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, KHTML, Gecko) Chrome/116.0.5845.96 Safari/537.36"
     }
 
-    try:
-        # Faire une requête HTTP
-        response = requests.get(url, headers=headers)
-        response.raise_for_status()  # Vérifie si la requête a échoué
+    response = requests.get(url, headers=headers)
 
-        soup = BeautifulSoup(response.text, "html.parser")
-        opportunities = []
-        serp_results = []
+    if response.status_code != 200:
+        st.error("Erreur lors de la récupération des résultats.")
+        return []
 
-        # Recherche tous les résultats de liens
-        for g in soup.find_all('div', class_='g'):
-            link = g.find('a')
-            if link and 'href' in link.attrs:
-                result_url = link.attrs['href']
-                if 'url?q=' in result_url:
-                    result_url = result_url.split("url?q=")[1].split("&")[0]
-                    serp_results.append(result_url)  # Ajoute à la liste des résultats de SERP
-                    opportunities.append(result_url)
+    soup = BeautifulSoup(response.text, 'html.parser')
+    results = []
+    for g in soup.find_all('div', class_='g')[:num_results]:
+        link = g.find('a', href=True)
+        if link:
+            title = g.find('h3').get_text() if g.find('h3') else "Titre non trouvé"
+            results.append((link['href'], title))
 
-        return opportunities, serp_results
-    except requests.exceptions.HTTPError as e:
-        st.error(f"Erreur HTTP : {e}")
-        return [], []
-    except Exception as e:
-        st.error(f"Erreur lors de la récupération des résultats : {e}")
-        return [], []
+    return results
 
-# Fonction pour analyser les opportunités trouvées
-def analyze_opportunities(opportunities, keywords):
-    analysis_results = []
-    for url in opportunities:
-        for keyword in keywords:
-            # Vérifie si le mot-clé est présent dans l'URL
-            if keyword.lower() in url.lower():
-                action = "Optimiser l'ancre" if "optimized" in url else "Ajouter un lien"
-                analysis_results.append({
-                    'url': url,
-                    'keyword': keyword,
-                    'action': action
-                })
-                break  # Pas besoin de vérifier d'autres mots-clés si un match a été trouvé
-    return analysis_results
+def analyze_opportunities(results, domains):
+    opportunities = []
+    for url, title in results:
+        domain = urllib.parse.urlparse(url).netloc
+        if domain in domains:
+            opportunities.append((domain, title, url))
+    return opportunities
 
-# Configuration de l'application Streamlit
-st.title("Analyse des Opportunités de Maillage Interne")
-st.write("Indiquez vos mots-clés, un par ligne.")
+# Interface utilisateur avec Streamlit
+st.title("Vérification d'Opportunités de Maillage")
+st.markdown("---")
 
-# Champs d'entrée pour les mots-clés, le site, la langue et le pays
-keywords_input = st.text_area("Mots-clés (un par ligne) :")
-site = st.text_input("Site à analyser :")
-lang = st.selectbox("Langue :", ["fr", "en", "es", "de", "it", "nl", "pl", "pt", "ru", "ja"])
-country = st.selectbox("Pays :", ["fr", "us", "de", "es", "it", "nl", "pl", "pt", "ru", "jp"])
+# Champ d'entrée pour le mot-clé
+keyword = st.text_input("Entrez le mot-clé:", placeholder="Ex: hébergement web")
+language = st.selectbox("Langue:", ["fr", "en", "es", "de", "it", "pt", "pl"])
+country = st.selectbox("Pays:", ["FR", "GB", "US", "CA", "ES", "DE", "IT", "PT", "PL", "MA", "SN", "TN"])
 
-# Bouton pour lancer l'analyse
-if st.button("Analyser"):
-    if keywords_input and site:
-        keywords = [kw.strip() for kw in keywords_input.splitlines() if kw.strip()]  # Sépare les mots-clés par ligne et enlève les espaces
+# Champ d'entrée pour les domaines
+domains_input = st.text_area("Entrez les domaines à vérifier (un par ligne):", placeholder="Ex: ovhcloud.com\nexample.com")
+domains = [domain.strip() for domain in domains_input.splitlines() if domain.strip()]
 
-        # Recherche et analyse
-        opportunities = []
-        all_serp_results = []
-        for keyword in keywords:
-            st.write(f"Recherche pour le mot-clé : {keyword}")
-            opportun, serp_results = google_search(keyword, site, lang, country)
-            opportunities += opportun
-            all_serp_results += serp_results
-            time.sleep(5)  # Pause prolongée pour éviter d'être bloqué par Google
+# Slider pour choisir le nombre d'URLs à scraper
+num_urls = st.slider("Sélectionnez le nombre d'URLs à scraper (entre 10 et 100):", min_value=10, max_value=100, value=10, step=10)
 
-        # Affichage des résultats
+st.markdown("---")
+
+if st.button("Vérifier les opportunités"):
+    if keyword and domains:
+        # Scraper les résultats pour le mot-clé
+        results = scrape_serp(keyword, language, country, num_urls)
+
+        # Analyser les opportunités de maillage
+        opportunities = analyze_opportunities(results, domains)
+
+        # Afficher les résultats
         if opportunities:
-            analysis_results = analyze_opportunities(opportunities, keywords)
-            if analysis_results:
-                st.write("### Opportunités de maillage interne trouvées :")
-                for result in analysis_results:
-                    st.write(f"**URL :** {result['url']} - **Mot-clé :** {result['keyword']} - **Action :** {result['action']}")
-            else:
-                st.write("Aucune opportunité trouvée.")
+            st.success("Des opportunités de maillage ont été trouvées !")
+            for domain, title, url in opportunities:
+                st.markdown(f"- **{domain}**: [{title}]({url})")
         else:
-            st.write("Aucune opportunité trouvée.")
+            st.warning("Aucune opportunité trouvée.")
 
-        # Vérification des SERP
-        st.write("### Résultats de la recherche :")
-        for serp_url in all_serp_results:
-            st.write(f"**URL trouvée :** {serp_url}")
+        st.markdown("---")
+        st.subheader("Résultats SERP")
+
+        # Afficher les résultats de recherche
+        for rank, (url, title) in enumerate(results, start=1):
+            st.markdown(f"{rank}. [{title}]({url})")
 
     else:
-        st.error("Veuillez entrer des mots-clés et un site.")
+        st.error("Veuillez entrer un mot-clé et au moins un domaine.")
