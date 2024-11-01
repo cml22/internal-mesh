@@ -26,9 +26,14 @@ def google_search(query, site=None):
 
 # Check if the anchor text exactly matches the keyword
 def check_anchor(keyword, url):
-    response = requests.get(url, headers=headers)
-    soup = BeautifulSoup(response.text, 'html.parser')
-    return any(keyword.lower() in a.get_text(strip=True).lower() for a in soup.find_all('a'))
+    try:
+        response = requests.get(url, headers=headers)
+        soup = BeautifulSoup(response.text, 'html.parser')
+        # Ensure we process only valid anchor tags and skip if there's an issue
+        return any(keyword.lower() in a.get_text(strip=True).lower() for a in soup.find_all('a') if a.get_text(strip=True))
+    except Exception as e:
+        st.write(f"Error checking anchor for URL {url}: {e}")
+        return False
 
 # Main function to find internal linking opportunities
 def find_linking_opportunities(keywords, site):
