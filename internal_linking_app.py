@@ -11,10 +11,11 @@ def google_search(keyword, site, lang, country):
         "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/89.0.4389.82 Safari/537.36"
     }
     
-    # Faire une requête HTTP
-    response = requests.get(url, headers=headers)
+    try:
+        # Faire une requête HTTP
+        response = requests.get(url, headers=headers)
+        response.raise_for_status()  # Vérifie si la requête a échoué
 
-    if response.status_code == 200:
         soup = BeautifulSoup(response.text, "html.parser")
         opportunities = []
         serp_results = []
@@ -29,8 +30,11 @@ def google_search(keyword, site, lang, country):
                 opportunities.append(result_url)
 
         return opportunities, serp_results
-    else:
-        st.error("Erreur lors de la récupération des résultats.")
+    except requests.exceptions.HTTPError as e:
+        st.error(f"Erreur HTTP : {e}")
+        return [], []
+    except Exception as e:
+        st.error(f"Erreur lors de la récupération des résultats : {e}")
         return [], []
 
 # Fonction pour analyser les opportunités trouvées
@@ -90,10 +94,7 @@ if st.button("Analyser"):
         # Vérification des SERP
         st.write("### Résultats de la recherche :")
         for serp_url in all_serp_results:
-            if site in serp_url:
-                st.write(f"**Le site {site} est positionné sur le mot-clé.** URL : {serp_url}")
-            else:
-                st.write(f"URL : {serp_url}")
+            st.write(f"**URL trouvée :** {serp_url}")
 
     else:
         st.error("Veuillez entrer des mots-clés et un site.")
