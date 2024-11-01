@@ -1,94 +1,66 @@
 import streamlit as st
 import requests
 from bs4 import BeautifulSoup
-import pandas as pd
 import time
 
-# --- Configuration --- 
-url = "https://www.google.fr/search"  # URL de recherche Google pour votre locale
-headers = {
-    "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36"
-}
+def google_search(keyword, site):
+    query = f"{keyword} site:{site}"
+    url = f"https://www.google.com/search?q={query}"
+    headers = {"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/89.0.4389.82 Safari/537.36"}
+    response = requests.get(url, headers=headers)
+    
+    # Affiche le contenu brut des résultats pour le débogage
+    st.write("Résultats bruts de la recherche Google :", response.text)
 
-# Fonction pour charger les mots-clés depuis un champ de texte
-def load_keywords(keywords_text):
-    return [line.strip() for line in keywords_text.splitlines() if line.strip()]  # Ignorer les lignes vides
-
-# Fonction pour effectuer une recherche Google et récupérer les résultats pour un mot-clé spécifique
-def google_search(query, site=None):
-    params = {"q": f"{query} site:{site}" if site else query, "num": 10}  # Recherche les 10 premiers résultats
-    response = requests.get(url, headers=headers, params=params)
     if response.status_code == 200:
-        return response.text
+        soup = BeautifulSoup(response.text, "html.parser")
+        opportunities = []
+        
+        # Cherche les liens dans les résultats
+        for result in soup.find_all('a'):
+            result_url = result.get('href')
+            if result_url:
+                if "url?q=" in result_url:
+                    # Extraction de l'URL
+                    result_url = result_url.split("url?q=")[1].split("&")[0]
+                    opportunities.append(result_url)
+                else:
+                    st.write(f"URL ignorée : {result_url}")  # Affiche les URLs qui ne correspondent pas
+
+        return opportunities
     else:
-        st.error(f"Erreur lors de la recherche pour le mot-clé '{query}': Statut {response.status_code}")
-        return None
+        st.error("Erreur lors de la récupération des résultats.")
+        return []
 
-# Fonction pour vérifier si un mot-clé est présent dans les ancres des liens de la page
-def check_anchor(keyword, page_url):
-    try:
-        response = requests.get(page_url, headers=headers)
-        if response.status_code == 200:
-            soup = BeautifulSoup(response.content, 'html.parser')
-            return any(keyword.lower() in a.get_text(strip=True).lower() for a in soup.find_all('a'))
-        else:
-            st.error(f"Erreur d'accès à l'URL {page_url}: Statut {response.status_code}")
-            return False
-    except Exception as e:
-        st.error(f"Erreur lors de la vérification de l'ancre pour l'URL {page_url}: {e}")
-        return False
-
-# Fonction principale pour trouver des opportunités de maillage interne
 def find_linking_opportunities(keywords, site):
     opportunities = []
     for keyword in keywords:
         st.write(f"Traitement du mot-clé : {keyword}")
-        search_results = google_search(keyword, site)
-        if search_results:
-            soup = BeautifulSoup(search_results, 'html.parser')
-            for result in soup.find_all('a'):
-                result_url = result.get('href')
-                if result_url and "url?q=" in result_url:  # Vérifie que result_url n'est pas None
-                    result_url = result_url.split("url?q=")[1].split("&")[0]
-                    anchor_match = check_anchor(keyword, result_url)
-                    if anchor_match:
-                        action = "Optimiser l'ancre"
-                    else:
-                        action = "Ajouter un lien"
-                    opportunities.append({"Mot-clé": keyword, "URL": result_url, "Action": action})
-        time.sleep(2)  # Délai pour éviter de surcharger Google
-    return pd.DataFrame(opportunities)
+        result_urls = google_search(keyword, site)
+        opportunities.extend(result_urls)
+        time.sleep(2)  # Pause pour éviter de surcharger le serveur de Google
 
-# Interface Streamlit
+    return opportunities
+
+# Titre de l'application
 st.title("Opportunités de Maillage Interne")
-st.write("Saisissez vos mots-clés (un par ligne) :")
 
 # Champ de saisie pour les mots-clés
-keywords_text = st.text_area("Mots-clés (un par ligne) :")
+keywords_input = st.text_area("Entrez vos mots-clés (un par ligne) :", height=200)
+keywords = keywords_input.splitlines() if keywords_input else []
 
-# Champ de saisie pour le site
-site = st.text_input("Entrez l'URL de votre site (sans https://) :")
-
-# Sélecteur de langue
-langues = [
-    "fr", "en", "es", "de", "it", "pt", "nl", "ru", "ja", "zh",
-    "ar", "hi", "tr", "sv", "da", "fi", "no", "pl", "cs", "ro",
-    "hu", "el", "th", "vi", "id", "bn", "ms", "tl", "af"
-]
-langue = st.selectbox("Choisissez la langue :", langues)
-
-# Sélecteur de pays
-pays = [
-    "fr", "us", "es", "de", "it", "pt", "nl", "ru", "jp", "cn",
-    "uk", "ca", "au", "br", "mx", "in", "za"
-]  
-pays_selection = st.selectbox("Choisissez le pays :", pays)
+# Champ pour le site
+site = st.text_input("Entrez l'URL de votre site :", "ovhcloud.com")
 
 # Bouton pour lancer la recherche
-if st.button("Trouver des opportunités"):
-    if keywords_text and site:
-        keywords = load_keywords(keywords_text)
-        results_df = find_linking_opportunities(keywords, site)
-        st.write(results_df)
+if st.button("Trouver des opportunités de maillage interne"):
+    if keywords:
+        results = find_linking_opportunities(keywords, site)
+        if results:
+            st.write("Opportunités de maillage interne trouvées :")
+            for url in results:
+                st.write(url)
+        else:
+            st.write("Aucune opportunité trouvée.")
     else:
-        st.error("Veuillez entrer des mots-clés et l'URL de votre site.")
+        st.warning("Veuillez entrer au moins un mot-clé avant de continuer.")
