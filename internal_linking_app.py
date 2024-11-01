@@ -43,10 +43,10 @@ def analyze_opportunities(opportunities, keywords):
 
 # Configuration de l'application Streamlit
 st.title("Analyse des Opportunités de Maillage Interne")
-st.write("Indiquez vos mots-clés en ligne, séparés par des virgules.")
+st.write("Indiquez vos mots-clés, un par ligne.")
 
 # Champs d'entrée pour les mots-clés, le site, la langue et le pays
-keywords_input = st.text_area("Mots-clés (séparés par des virgules) :")
+keywords_input = st.text_area("Mots-clés (un par ligne) :")
 site = st.text_input("Site à analyser :")
 lang = st.selectbox("Langue :", ["fr", "en", "es", "de", "it", "nl", "pl", "pt", "ru", "ja"])
 country = st.selectbox("Pays :", ["fr", "us", "de", "es", "it", "nl", "pl", "pt", "ru", "jp"])
@@ -54,7 +54,7 @@ country = st.selectbox("Pays :", ["fr", "us", "de", "es", "it", "nl", "pl", "pt"
 # Bouton pour lancer l'analyse
 if st.button("Analyser"):
     if keywords_input and site:
-        keywords = [kw.strip() for kw in keywords_input.split(",")]
+        keywords = [kw.strip() for kw in keywords_input.splitlines() if kw.strip()]  # Sépare les mots-clés par ligne et enlève les espaces
 
         # Recherche et analyse
         opportunities = []
