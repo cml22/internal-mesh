@@ -1,21 +1,16 @@
-## Edit "Configuration settings" below according to your needs
-## Don't forget to change site = "ovhcloud.com" by your own website 👈
-## Don't forget to change url = "https://www.google.fr/search" by your own Google locale (google.de, etc) 👈
-## Don't forget to add a TXT file as "keywords.txt" in your files (at root, no in sample_data !) 👈
-## Output will be "internal_mesh_opportunities" in root 👈 (refresh for it to appear)
-
 import requests
 from bs4 import BeautifulSoup
 import pandas as pd
 import time
 from urllib.parse import urlparse, urljoin
 import logging
+import streamlit as st
 
 # --- Configuration settings (what to change) ---
 keyword_file = 'keywords.txt'                     # Path to your keywords file
-site = "ovhcloud.com"                                # Your website (change as needed)
-output_file = 'internal_mesh_opportunities'          # Output file for opportunities
-url = "https://www.google.fr/search"               # Google search URL (change for your locale)
+site = "yourwebsite.com"                           # Your website (change as needed)
+output_file = 'link_opportunities.csv'            # Output file for opportunities
+url = "https://www.google.com/search"              # Google search URL (change for your locale)
 headers = {
     "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) " +
                   "AppleWebKit/537.36 (KHTML, like Gecko) " +
@@ -25,7 +20,7 @@ delay_between_requests = 2  # seconds
 
 # Setup logging
 logging.basicConfig(
-    filename='maillage_debug.log',
+    filename='linking_debug.log',
     filemode='w',
     level=logging.INFO,
     format='%(asctime)s - %(levelname)s - %(message)s'
@@ -40,10 +35,12 @@ def load_keywords(file_path):
         return keywords
     except FileNotFoundError:
         logging.error(f"Keyword file not found: {file_path}")
-        raise
+        st.error("Keyword file not found.")
+        return []
     except Exception as e:
         logging.error(f"Error loading keywords: {e}")
-        raise
+        st.error("Error loading keywords.")
+        return []
 
 # Perform a Google search and retrieve results for a specific keyword
 def google_search(query, site=None, num_results=10):
@@ -88,23 +85,23 @@ def check_existing_link(source_url, target_url, keyword):
                 # Found a link to the target page
                 anchor_text = a_tag.get_text().strip().lower()
                 if anchor_text == keyword_lower:
-                    return (True, 'Oui')  # Link exists and anchor is optimized
+                    return (True, 'Yes')  # Link exists and anchor is optimized
                 else:
-                    return (True, 'Non')  # Link exists but anchor is not optimized
-        return (False, 'Non')  # Link does not exist
+                    return (True, 'No')  # Link exists but anchor is not optimized
+        return (False, 'No')  # Link does not exist
     except requests.RequestException as e:
         logging.warning(f"HTTP error accessing '{source_url}': {e}")
-        return (False, 'Non')
+        return (False, 'No')
     except Exception as e:
         logging.warning(f"Error parsing '{source_url}': {e}")
-        return (False, 'Non')
+        return (False, 'No')
 
 # Detect linking opportunities by linking all pages to the top 1 result
-def detect_maillage(keywords, site):
-    maillage_opportunities = []
+def detect_linking_opportunities(keywords, site):
+    linking_opportunities = []
 
     for idx, keyword in enumerate(keywords, start=1):
-        print(f"[{idx}/{len(keywords)}] Recherche pour le mot-clé : {keyword}")
+        st.write(f"[{idx}/{len(keywords)}] Searching for keyword: {keyword}")
         logging.info(f"Processing keyword {idx}/{len(keywords)}: '{keyword}'")
         links = google_search(keyword, site)
 
@@ -113,13 +110,13 @@ def detect_maillage(keywords, site):
             for link in links[1:]:
                 exists, anchor_optimized = check_existing_link(link, top_link, keyword)
                 if not exists:
-                    action = "Ajouter un lien"
-                    maillage_opportunities.append([keyword, link, top_link, action, 'Non Applicable'])
+                    action = "Add Link"
+                    linking_opportunities.append([keyword, link, top_link, action, 'N/A'])
                     logging.info(f"Link opportunity: '{link}' → '{top_link}' for keyword '{keyword}' (Add Link)")
                 else:
-                    if anchor_optimized == 'Non':
-                        action = "Optimiser l'ancre"
-                        maillage_opportunities.append([keyword, link, top_link, action, 'Non'])
+                    if anchor_optimized == 'No':
+                        action = "Optimize Anchor"
+                        linking_opportunities.append([keyword, link, top_link, action, 'No'])
                         logging.info(f"Anchor optimization needed: '{link}' already links to '{top_link}' with non-optimized anchor for keyword '{keyword}'")
                     else:
                         logging.info(f"Existing optimized link found: '{link}' already links to '{top_link}' with optimized anchor for keyword '{keyword}'")
@@ -128,42 +125,42 @@ def detect_maillage(keywords, site):
 
         time.sleep(delay_between_requests)  # Pause to avoid being blocked
 
-    return maillage_opportunities
+    return linking_opportunities
 
 # Export results to a CSV file
-def export_to_csv(maillage_opportunities, output_file):
+def export_to_csv(linking_opportunities, output_file):
     try:
-        df = pd.DataFrame(maillage_opportunities, columns=["Mot-Clé", "Page Source", "Page Cible", "Action Requise", "Anchor Optimisé"])
+        df = pd.DataFrame(linking_opportunities, columns=["Keyword", "Source Page", "Target Page", "Required Action", "Anchor Optimized"])
         df.to_csv(output_file, index=False, encoding='utf-8-sig')
-        print(f"Opportunités de maillage interne exportées dans : {output_file}")
-        logging.info(f"Exported {len(maillage_opportunities)} opportunities to '{output_file}'")
+        st.success(f"Linking opportunities exported to: {output_file}")
+        logging.info(f"Exported {len(linking_opportunities)} opportunities to '{output_file}'")
     except Exception as e:
         logging.error(f"Error exporting to CSV: {e}")
-        raise
+        st.error("Error exporting to CSV.")
 
-# Load keywords and start the process
-def main():
-    try:
-        # Load keywords
-        keywords = load_keywords(keyword_file)
+# Streamlit user interface
+st.title("Internal Linking Opportunities Detector")
+st.write("Upload a text file with keywords (one per line).")
 
-        if not keywords:
-            print(f"Aucun mot-clé trouvé dans {keyword_file}.")
-            logging.warning(f"No keywords found in '{keyword_file}'. Exiting.")
-            return
+# File upload
+uploaded_file = st.file_uploader("Choose a TXT file", type="txt")
 
+if uploaded_file is not None:
+    keywords = uploaded_file.read().decode("utf-8").splitlines()
+    keywords = [keyword.strip() for keyword in keywords if keyword.strip()]
+    if keywords:
+        st.write(f"Loaded {len(keywords)} keywords.")
+        
         # Detect internal linking opportunities
-        maillage_opportunities = detect_maillage(keywords, site)
+        linking_opportunities = detect_linking_opportunities(keywords, site)
 
-        if maillage_opportunities:
+        if linking_opportunities:
             # Export results to a CSV file
-            export_to_csv(maillage_opportunities, output_file)
+            export_to_csv(linking_opportunities, output_file)
         else:
-            print("Aucune opportunité de maillage interne trouvée.")
+            st.write("No internal linking opportunities found.")
             logging.info("No linking opportunities found.")
-    except Exception as e:
-        print(f"Une erreur est survenue : {e}")
-        logging.critical(f"Critical error in main: {e}")
-
-if __name__ == "__main__":
-    main()
+    else:
+        st.write("No keywords found in the uploaded file.")
+else:
+    st.write("Please upload a keywords file to begin.")
