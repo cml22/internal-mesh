@@ -1,10 +1,9 @@
 import streamlit as st
 import requests
 from bs4 import BeautifulSoup
-import time
 
+# Fonction pour effectuer une recherche Google
 def google_search(keyword, site, lang, country):
-    # Forme la requête Google avec les paramètres de langue et pays
     query = f"{keyword} site:{site}"
     url = f"https://www.google.{country}/search?q={query}&hl={lang}"
     headers = {
@@ -16,7 +15,8 @@ def google_search(keyword, site, lang, country):
         soup = BeautifulSoup(response.text, "html.parser")
         opportunities = []
 
-        for result in soup.find_all('a'):
+        # Recherche tous les résultats de liens
+        for result in soup.select('a'):
             result_url = result.get('href')
             if result_url and "url?q=" in result_url:
                 result_url = result_url.split("url?q=")[1].split("&")[0]
@@ -27,54 +27,50 @@ def google_search(keyword, site, lang, country):
         st.error("Erreur lors de la récupération des résultats.")
         return []
 
+# Fonction pour analyser les opportunités trouvées
 def analyze_opportunities(opportunities, keywords):
-    # Simule une analyse des opportunités de maillage
     analysis_results = []
     for url in opportunities:
         for keyword in keywords:
-            # Simule une condition pour l'exemple
-            if keyword.lower() in url.lower():
+            if keyword.lower() in url.lower():  # Vérifie si le mot-clé est présent dans l'URL
                 analysis_results.append({
                     'url': url,
                     'keyword': keyword,
                     'action': "Ajouter un lien" if "optimized" not in url else "Optimiser l'ancre"
                 })
+                break  # Pas besoin de vérifier d'autres mots-clés si un match a été trouvé
     return analysis_results
 
-def find_linking_opportunities(keywords, site, lang, country):
-    opportunities = []
-    for keyword in keywords:
-        st.write(f"Recherche pour le mot-clé : {keyword}")
-        result_urls = google_search(keyword, site, lang, country)
-        opportunities.extend(result_urls)
-        time.sleep(2)  # Pause pour éviter de surcharger le serveur de Google
+# Configuration de l'application Streamlit
+st.title("Analyse des Opportunités de Maillage Interne")
+st.write("Indiquez vos mots-clés en ligne, séparés par des virgules.")
 
-    # Analyse des opportunités de maillage
-    return analyze_opportunities(opportunities, keywords)
+# Champs d'entrée pour les mots-clés, le site, la langue et le pays
+keywords_input = st.text_area("Mots-clés (séparés par des virgules) :")
+site = st.text_input("Site à analyser :")
+lang = st.selectbox("Langue :", ["fr", "en", "es", "de", "it", "nl", "pl", "pt", "ru", "ja"])
+country = st.selectbox("Pays :", ["fr", "us", "de", "es", "it", "nl", "pl", "pt", "ru", "jp"])
 
-# Titre de l'application
-st.title("Opportunités de Maillage Interne")
+# Bouton pour lancer l'analyse
+if st.button("Analyser"):
+    if keywords_input and site:
+        keywords = [kw.strip() for kw in keywords_input.split(",")]
 
-# Champ de saisie pour les mots-clés
-keywords_input = st.text_area("Entrez vos mots-clés (un par ligne) :", height=200)
-keywords = keywords_input.splitlines() if keywords_input else []
+        # Recherche et analyse
+        opportunities = []
+        for keyword in keywords:
+            st.write(f"Recherche pour le mot-clé : {keyword}")
+            opportunities += google_search(keyword, site, lang, country)
 
-# Champ pour le site
-site = st.text_input("Entrez l'URL de votre site :", "ovhcloud.com")
-
-# Sélection de la langue et du pays
-lang = st.selectbox("Choisissez la langue :", ["fr", "en", "es", "de", "it", "pl", "nl"])
-country = st.selectbox("Choisissez le pays :", ["com", "fr", "uk", "de", "es", "it", "pl", "nl"])
-
-# Bouton pour lancer la recherche
-if st.button("Trouver des opportunités de maillage interne"):
-    if keywords:
-        results = find_linking_opportunities(keywords, site, lang, country)
-        if results:
-            st.write("Opportunités de maillage interne trouvées :")
-            for result in results:
-                st.write(f"**URL :** {result['url']} | **Mot-clé :** {result['keyword']} | **Action :** {result['action']}")
+        if opportunities:
+            analysis_results = analyze_opportunities(opportunities, keywords)
+            if analysis_results:
+                st.write("### Opportunités de maillage interne trouvées :")
+                for result in analysis_results:
+                    st.write(f"**URL :** {result['url']} - **Mot-clé :** {result['keyword']} - **Action :** {result['action']}")
+            else:
+                st.write("Aucune opportunité trouvée.")
         else:
             st.write("Aucune opportunité trouvée.")
     else:
-        st.warning("Veuillez entrer au moins un mot-clé avant de continuer.")
+        st.error("Veuillez entrer des mots-clés et un site.")
